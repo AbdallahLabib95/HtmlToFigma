@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HTML to Figma</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #1a1a2e;
+      --bg-secondary: #16213e;
+      --bg-card: #1f2b47;
+      --text-primary: #e8e8e8;
+      --text-secondary: #a0aec0;
+      --accent: #0ea5e9;
+      --accent-hover: #38bdf8;
+      --border-color: #2d3748;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .plugin-container {
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 100vh;
+    }
+
+    .plugin-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .plugin-header .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, var(--accent), #06b6d4);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: white;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .plugin-header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .plugin-header .subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin: 0;
+    }
+
+    .editor-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .editor-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+    }
+
+    .editor-wrapper {
+      flex: 1;
+      position: relative;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .editor-wrapper:focus-within {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.15);
+    }
+
+    .editor-wrapper textarea {
+      width: 100%;
+      height: 100%;
+      min-height: 320px;
+      resize: none;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+      font-size: 12px;
+      line-height: 1.6;
+      padding: 12px;
+      outline: none;
+      tab-size: 2;
+    }
+
+    .editor-wrapper textarea::placeholder {
+      color: var(--text-secondary);
+      opacity: 0.6;
+    }
+
+    .options-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .option-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .option-check input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .action-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .btn-convert {
+      flex: 1;
+      background: linear-gradient(135deg, var(--accent), #0284c7);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-convert:hover:not(:disabled) {
+      background: linear-gradient(135deg, var(--accent-hover), #0ea5e9);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+    }
+
+    .btn-convert:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-convert:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-convert.loading .btn-text {
+      display: none;
+    }
+
+    .btn-convert.loading .btn-loader {
+      display: flex;
+    }
+
+    .btn-loader {
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-clear {
+      background: var(--bg-card);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-clear:hover {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border-color: var(--text-secondary);
+    }
+
+    .status-bar {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .status-bar.visible {
+      display: flex;
+    }
+
+    .status-bar.success {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: var(--success);
+    }
+
+    .status-bar.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--error);
+    }
+
+    .status-bar.info {
+      background: rgba(14, 165, 233, 0.1);
+      border: 1px solid rgba(14, 165, 233, 0.3);
+      color: var(--accent);
+    }
+
+    .status-bar .status-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .footer-info {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-align: center;
+      opacity: 0.7;
+      padding-top: 4px;
+    }
+
+    .template-chips {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .template-chip {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .template-chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(14, 165, 233, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="plugin-container">
+    <div class="plugin-header">
+      <div class="logo"><i class="bi bi-code-slash"></i></div>
+      <div>
+        <h1>HTML to Figma</h1>
+        <p class="subtitle">Convert HTML/CSS into Figma layers</p>
+      </div>
+    </div>
+
+    <div class="editor-section">
+      <div class="d-flex align-items-center justify-content-between">
+        <span class="editor-label">Paste your HTML</span>
+        <div class="template-chips">
+          <span class="template-chip" data-template="button">Button</span>
+          <span class="template-chip" data-template="card">Card</span>
+          <span class="template-chip" data-template="nav">Navbar</span>
+        </div>
+      </div>
+      <div class="editor-wrapper">
+        <textarea id="html-input" spellcheck="false" placeholder="<div style=&quot;padding: 24px; background: #fff; border-radius: 12px;&quot;>&#10;  <h1 style=&quot;font-size: 24px; color: #1a1a2e;&quot;>Hello World</h1>&#10;  <p style=&quot;color: #666;&quot;>Paste your HTML here...</p>&#10;</div>"></textarea>
+      </div>
+    </div>
+
+    <div class="options-row">
+      <label class="option-check">
+        <input type="checkbox" id="opt-autolayout" checked>
+        Auto-layout
+      </label>
+      <label class="option-check">
+        <input type="checkbox" id="opt-preserve-hierarchy" checked>
+        Preserve hierarchy
+      </label>
+      <label class="option-check">
+        <input type="checkbox" id="opt-include-text-styles" checked>
+        Text styles
+      </label>
+    </div>
+
+    <div class="action-bar">
+      <button class="btn-convert" id="btn-convert">
+        <span class="btn-text"><i class="bi bi-arrow-right-circle"></i> Convert to Figma</span>
+        <span class="btn-loader"><span class="spinner"></span> Converting...</span>
+      </button>
+      <button class="btn-clear" id="btn-clear" title="Clear input">
+        <i class="bi bi-trash3"></i>
+      </button>
+    </div>
+
+    <div class="status-bar" id="status-bar">
+      <span class="status-icon"></span>
+      <span class="status-text"></span>
+    </div>
+
+    <div class="footer-info">
+      Supports inline styles, class-based styles, and nested elements
+    </div>
+  </div>
+
+  <script>
+    const TEMPLATES = {
+      button: `<button style="padding: 12px 24px; background: #0ea5e9; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;">Click Me</button>`,
+      card: `<div style="width: 320px; padding: 24px; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+  <h2 style="margin: 0 0 8px 0; font-size: 20px; font-weight: 700; color: #1a1a2e;">Card Title</h2>
+  <p style="margin: 0 0 16px 0; font-size: 14px; color: #64748b; line-height: 1.5;">This is a sample card component with text content and a button.</p>
+  <button style="padding: 10px 20px; background: #0ea5e9; color: white; border: none; border-radius: 6px; font-size: 13px; font-weight: 600;">Learn More</button>
+</div>`,
+      nav: `<nav style="display: flex; align-items: center; justify-content: space-between; padding: 16px 32px; background: #1a1a2e;">
+  <span style="font-size: 18px; font-weight: 700; color: #ffffff;">Brand</span>
+  <div style="display: flex; gap: 24px;">
+    <a style="font-size: 14px; color: #a0aec0; text-decoration: none;">Home</a>
+    <a style="font-size: 14px; color: #a0aec0; text-decoration: none;">About</a>
+    <a style="font-size: 14px; color: #a0aec0; text-decoration: none;">Contact</a>
+  </div>
+</nav>`
+    };
+
+    const htmlInput = document.getElementById('html-input');
+    const btnConvert = document.getElementById('btn-convert');
+    const btnClear = document.getElementById('btn-clear');
+    const statusBar = document.getElementById('status-bar');
+
+    document.querySelectorAll('.template-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const template = chip.dataset.template;
+        if (TEMPLATES[template]) {
+          htmlInput.value = TEMPLATES[template];
+          htmlInput.focus();
+        }
+      });
+    });
+
+    btnClear.addEventListener('click', () => {
+      htmlInput.value = '';
+      hideStatus();
+      htmlInput.focus();
+    });
+
+    btnConvert.addEventListener('click', () => {
+      const html = htmlInput.value.trim();
+      if (!html) {
+        showStatus('error', 'Please paste some HTML to convert.');
+        return;
+      }
+
+      setLoading(true);
+      hideStatus();
+
+      parent.postMessage({
+        pluginMessage: {
+          type: 'convert-html',
+          html: html,
+          options: {
+            autoLayout: document.getElementById('opt-autolayout').checked,
+            preserveHierarchy: document.getElementById('opt-preserve-hierarchy').checked,
+            includeTextStyles: document.getElementById('opt-include-text-styles').checked
+          }
+        }
+      }, '*');
+    });
+
+    htmlInput.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        btnConvert.click();
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const start = htmlInput.selectionStart;
+        const end = htmlInput.selectionEnd;
+        htmlInput.value = htmlInput.value.substring(0, start) + '  ' + htmlInput.value.substring(end);
+        htmlInput.selectionStart = htmlInput.selectionEnd = start + 2;
+      }
+    });
+
+    onmessage = (event) => {
+      const msg = event.data.pluginMessage;
+      if (!msg) return;
+
+      if (msg.type === 'conversion-complete') {
+        setLoading(false);
+        showStatus('success', `Created ${msg.nodeCount} layer${msg.nodeCount !== 1 ? 's' : ''} in Figma.`);
+      } else if (msg.type === 'conversion-error') {
+        setLoading(false);
+        showStatus('error', msg.message || 'Conversion failed.');
+      } else if (msg.type === 'conversion-progress') {
+        showStatus('info', msg.message);
+      }
+    };
+
+    function setLoading(loading) {
+      btnConvert.disabled = loading;
+      btnConvert.classList.toggle('loading', loading);
+    }
+
+    function showStatus(type, message) {
+      const icons = { success: 'bi-check-circle-fill', error: 'bi-exclamation-circle-fill', info: 'bi-info-circle-fill' };
+      statusBar.className = `status-bar visible ${type}`;
+      statusBar.querySelector('.status-icon').className = `status-icon bi ${icons[type]}`;
+      statusBar.querySelector('.status-text').textContent = message;
+    }
+
+    function hideStatus() {
+      statusBar.className = 'status-bar';
+    }
+  </script>
+</body>
+</html>
