@@ -71,8 +71,8 @@ export async function convertToFigma(tree, options) {
       const textNode = await createTextNode(text, mergedStyles, parent);
       if (textNode) {
         textNode.name = node.tag;
-        applyTextLayoutProps(textNode, mergedStyles, parent);
         parent.appendChild(textNode);
+        applyTextLayoutProps(textNode, mergedStyles, parent);
         nodeCount++;
       }
       return;
@@ -226,9 +226,10 @@ function applyChildLayoutProps(frame, styles, parent) {
   var display = styles.display || '';
   var isInlineLevel = display === 'inline' || display === 'inline-block' || display === 'inline-flex';
 
+  // FILL can only be set after the child is appended to an auto-layout parent
   if (styles.width === '100%' || styles.flex === '1' || styles.flexGrow === '1') {
     frame.layoutSizingHorizontal = 'FILL';
-  } else if (parent.layoutMode === 'VERTICAL' && !isInlineLevel && !parseNumeric(styles.width)) {
+  } else if (parent.layoutMode === 'VERTICAL' && !isInlineLevel && !parseNumeric(styles.width) && styles.width !== '100%') {
     frame.layoutSizingHorizontal = 'FILL';
   }
 
@@ -385,19 +386,18 @@ function applyAutoLayout(frame, styles) {
   frame.primaryAxisSizingMode = 'AUTO';
   frame.counterAxisSizingMode = 'AUTO';
 
+  // Only set FIXED or HUG here — FILL requires the frame to already be a child
+  // of an auto-layout parent, which hasn't happened yet at this point.
+  // FILL sizing is applied in applyChildLayoutProps after appendChild.
   if (hasFixedWidth) {
     frame.layoutSizingHorizontal = 'FIXED';
-  } else if (styles.width === '100%') {
-    frame.layoutSizingHorizontal = 'FILL';
-  } else {
+  } else if (styles.width !== '100%') {
     frame.layoutSizingHorizontal = 'HUG';
   }
 
   if (hasFixedHeight) {
     frame.layoutSizingVertical = 'FIXED';
-  } else if (styles.height === '100%') {
-    frame.layoutSizingVertical = 'FILL';
-  } else {
+  } else if (styles.height !== '100%') {
     frame.layoutSizingVertical = 'HUG';
   }
 
