@@ -699,8 +699,8 @@
       const frame = figma.createFrame();
       frame.name = getNodeName(node);
       nodeCount++;
-      const shouldBeFullWidth = isFullWidthContainer(node);
-      applyFrameStyles(frame, node.styles, options, shouldBeFullWidth ? VIEWPORT_WIDTH : void 0, node.tag);
+      const useViewportWidth = isFullWidthContainer(node) || !node.styles.maxWidth;
+      applyFrameStyles(frame, node.styles, options, useViewportWidth ? VIEWPORT_WIDTH : void 0, node.tag);
       parent.appendChild(frame);
       applyChildLayoutProps(frame, node.styles, parent);
       if (options.preserveHierarchy) {
@@ -818,10 +818,13 @@
       return;
     var display = styles.display || "";
     var isInlineLevel = display === "inline" || display === "inline-block" || display === "inline-flex";
-    if (styles.width === "100%" || styles.flex === "1" || styles.flexGrow === "1") {
-      frame.layoutSizingHorizontal = "FILL";
-    } else if (parent.layoutMode === "VERTICAL" && !isInlineLevel && !parseNumeric(styles.width) && styles.width !== "100%") {
-      frame.layoutSizingHorizontal = "FILL";
+    const hasMaxWidth = parseNumeric(styles.maxWidth) > 0;
+    if (!hasMaxWidth) {
+      if (styles.width === "100%" || styles.flex === "1" || styles.flexGrow === "1") {
+        frame.layoutSizingHorizontal = "FILL";
+      } else if (parent.layoutMode === "VERTICAL" && !isInlineLevel && !parseNumeric(styles.width) && styles.width !== "100%") {
+        frame.layoutSizingHorizontal = "FILL";
+      }
     }
     if (styles.height === "100%") {
       frame.layoutSizingVertical = "FILL";
@@ -844,6 +847,9 @@
     if (!width && styles.width && styles.width.includes("%") && viewportWidth) {
       const percent = parseNumeric(styles.width) / 100;
       width = Math.round(viewportWidth * percent);
+    }
+    if (!width && parseNumeric(styles.maxWidth) > 0) {
+      width = parseNumeric(styles.maxWidth);
     }
     if (!width && viewportWidth && ["body", "section", "header", "footer", "main"].includes(nodeTag)) {
       width = viewportWidth;

@@ -85,10 +85,11 @@ export async function convertToFigma(tree, options) {
     frame.name = getNodeName(node);
     nodeCount++;
 
-    // Detect if this frame should be full-width (e.g., body, section with % padding)
-    const shouldBeFullWidth = isFullWidthContainer(node);
+    // Pass viewport width context for proper frame sizing
+    // This applies to body, section, and other layout containers
+    const useViewportWidth = isFullWidthContainer(node) || !node.styles.maxWidth;
 
-    applyFrameStyles(frame, node.styles, options, shouldBeFullWidth ? VIEWPORT_WIDTH : undefined, node.tag);
+    applyFrameStyles(frame, node.styles, options, useViewportWidth ? VIEWPORT_WIDTH : undefined, node.tag);
 
     parent.appendChild(frame);
 
@@ -232,11 +233,16 @@ function applyChildLayoutProps(frame, styles, parent) {
   var display = styles.display || '';
   var isInlineLevel = display === 'inline' || display === 'inline-block' || display === 'inline-flex';
 
+  // Don't apply FILL if max-width is constrained — max-width indicates desired size
+  const hasMaxWidth = parseNumeric(styles.maxWidth) > 0;
+
   // FILL can only be set after the child is appended to an auto-layout parent
-  if (styles.width === '100%' || styles.flex === '1' || styles.flexGrow === '1') {
-    frame.layoutSizingHorizontal = 'FILL';
-  } else if (parent.layoutMode === 'VERTICAL' && !isInlineLevel && !parseNumeric(styles.width) && styles.width !== '100%') {
-    frame.layoutSizingHorizontal = 'FILL';
+  if (!hasMaxWidth) {
+    if (styles.width === '100%' || styles.flex === '1' || styles.flexGrow === '1') {
+      frame.layoutSizingHorizontal = 'FILL';
+    } else if (parent.layoutMode === 'VERTICAL' && !isInlineLevel && !parseNumeric(styles.width) && styles.width !== '100%') {
+      frame.layoutSizingHorizontal = 'FILL';
+    }
   }
 
   if (styles.height === '100%') {
@@ -260,6 +266,11 @@ function applyFrameStyles(frame, styles, options, viewportWidth, nodeTag) {
   if (!width && styles.width && styles.width.includes('%') && viewportWidth) {
     const percent = parseNumeric(styles.width) / 100;
     width = Math.round(viewportWidth * percent);
+  }
+
+  // Use max-width as frame width if no explicit width is set
+  if (!width && parseNumeric(styles.maxWidth) > 0) {
+    width = parseNumeric(styles.maxWidth);
   }
 
   // For full-width containers with no explicit width, use viewport width
