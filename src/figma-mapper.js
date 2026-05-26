@@ -33,7 +33,7 @@ export async function convertToFigma(tree, options) {
 
     if (node.tag === 'root') {
       for (const child of node.children) {
-        await processNode(child, parent);
+        await processNode(child, parent, isFullWidth);
       }
       return;
     }
