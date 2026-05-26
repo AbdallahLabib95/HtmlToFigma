@@ -705,11 +705,11 @@
       applyChildLayoutProps(frame, node.styles, parent);
       if (options.preserveHierarchy) {
         for (const child of node.children) {
-          await processNode(child, frame, shouldBeFullWidth);
+          await processNode(child, frame, useViewportWidth);
         }
       } else {
         for (const child of node.children) {
-          await processNode(child, frame, shouldBeFullWidth);
+          await processNode(child, frame, useViewportWidth);
         }
       }
     }
