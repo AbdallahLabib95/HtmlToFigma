@@ -641,7 +641,8 @@
   };
   async function convertToFigma(tree, options) {
     let nodeCount = 0;
-    async function processNode(node, parent) {
+    const VIEWPORT_WIDTH = 1200;
+    async function processNode(node, parent, isFullWidth = false) {
       if (node.type === "text") {
         const textNode = await createTextNode(node.content, node.styles || {}, parent);
         if (textNode) {
@@ -698,16 +699,17 @@
       const frame = figma.createFrame();
       frame.name = getNodeName(node);
       nodeCount++;
-      applyFrameStyles(frame, node.styles, options);
+      const shouldBeFullWidth = isFullWidthContainer(node);
+      applyFrameStyles(frame, node.styles, options, shouldBeFullWidth ? VIEWPORT_WIDTH : void 0, node.tag);
       parent.appendChild(frame);
       applyChildLayoutProps(frame, node.styles, parent);
       if (options.preserveHierarchy) {
         for (const child of node.children) {
-          await processNode(child, frame);
+          await processNode(child, frame, shouldBeFullWidth);
         }
       } else {
         for (const child of node.children) {
-          await processNode(child, frame);
+          await processNode(child, frame, shouldBeFullWidth);
         }
       }
     }
@@ -836,17 +838,24 @@
       frame.layoutAlign = selfMap[styles.alignSelf] || "INHERIT";
     }
   }
-  function applyFrameStyles(frame, styles, options) {
-    const width = parseNumeric(styles.width);
-    const height = parseNumeric(styles.height);
+  function applyFrameStyles(frame, styles, options, viewportWidth, nodeTag) {
+    let width = parseNumeric(styles.width);
+    let height = parseNumeric(styles.height);
+    if (!width && styles.width && styles.width.includes("%") && viewportWidth) {
+      const percent = parseNumeric(styles.width) / 100;
+      width = Math.round(viewportWidth * percent);
+    }
+    if (!width && viewportWidth && ["body", "section", "header", "footer", "main"].includes(nodeTag)) {
+      width = viewportWidth;
+    }
     if (width && height) {
       frame.resize(Math.max(width, 1), Math.max(height, 1));
     } else if (width) {
       frame.resize(Math.max(width, 1), 40);
     } else if (height) {
-      frame.resize(200, Math.max(height, 1));
+      frame.resize(1200, Math.max(height, 1));
     } else {
-      frame.resize(200, 40);
+      frame.resize(1200, 40);
     }
     frame.fills = [];
     if (styles.background || styles.backgroundColor) {
@@ -1096,6 +1105,18 @@
     if (node.attrs && node.attrs.class)
       return `.${node.attrs.class.split(" ")[0]}`;
     return node.tag;
+  }
+  function isFullWidthContainer(node) {
+    if (["body", "section", "header", "footer", "main"].includes(node.tag)) {
+      return true;
+    }
+    const padding = node.styles.padding || "";
+    const paddingLeft = node.styles.paddingLeft || "";
+    const paddingRight = node.styles.paddingRight || "";
+    if (padding.includes("%") || paddingLeft.includes("%") || paddingRight.includes("%")) {
+      return true;
+    }
+    return false;
   }
   function parseNumeric(value) {
     if (!value)
