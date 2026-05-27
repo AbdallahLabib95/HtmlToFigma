@@ -699,7 +699,7 @@
       const frame = figma.createFrame();
       frame.name = getNodeName(node);
       nodeCount++;
-      const useViewportWidth = isFullWidthContainer(node) || !node.styles.maxWidth;
+      const useViewportWidth = isFullWidthContainer(node);
       applyFrameStyles(frame, node.styles, options, useViewportWidth ? VIEWPORT_WIDTH : void 0, node.tag);
       parent.appendChild(frame);
       applyChildLayoutProps(frame, node.styles, parent);

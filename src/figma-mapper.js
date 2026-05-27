@@ -86,8 +86,8 @@ export async function convertToFigma(tree, options) {
     nodeCount++;
 
     // Pass viewport width context for proper frame sizing
-    // This applies to body, section, and other layout containers
-    const useViewportWidth = isFullWidthContainer(node) || !node.styles.maxWidth;
+    // Only for actual full-width containers like body, section, header, etc.
+    const useViewportWidth = isFullWidthContainer(node);
 
     applyFrameStyles(frame, node.styles, options, useViewportWidth ? VIEWPORT_WIDTH : undefined, node.tag);
 
