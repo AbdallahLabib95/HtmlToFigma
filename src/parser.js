@@ -45,9 +45,51 @@ const DEFAULT_STYLES = {
 
 export function parseHTML(htmlString) {
   const cleaned = htmlString.trim();
+
+  // Extract CSS from <style> tags before parsing
+  const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+  let cssContent = '';
+  let match;
+  while ((match = styleRegex.exec(cleaned)) !== null) {
+    cssContent += match[1] + '\n';
+  }
+
+  // Parse CSS rules
+  const cssRules = cssContent.trim() ? parseCSSToRules(cssContent) : {};
+
   const tokens = tokenize(cleaned);
-  const tree = buildTree(tokens);
+  const tree = buildTree(tokens, cssRules);
   return tree;
+}
+
+function parseCSSToRules(cssContent) {
+  const rules = {};
+
+  // Simple CSS parser - extract selectors and declarations
+  const ruleRegex = /([^{]+)\{([^}]*)\}/g;
+  let match;
+
+  while ((match = ruleRegex.exec(cssContent)) !== null) {
+    const selector = match[1].trim();
+    const declarations = match[2];
+
+    // Parse declarations into object
+    const styles = {};
+    const declRegex = /([^:;]+):\s*([^;]+);/g;
+    let declMatch;
+
+    while ((declMatch = declRegex.exec(declarations)) !== null) {
+      const prop = declMatch[1].trim();
+      const value = declMatch[2].trim();
+      styles[camelCase(prop)] = value;
+    }
+
+    if (Object.keys(styles).length > 0) {
+      rules[selector] = styles;
+    }
+  }
+
+  return rules;
 }
 
 function tokenize(html) {
@@ -122,7 +164,7 @@ function parseTag(raw) {
   return { type: 'open', tag, attrs, selfClosing: false };
 }
 
-function buildTree(tokens) {
+function buildTree(tokens, cssRules = {}) {
   const root = { type: 'element', tag: 'root', children: [], styles: {}, attrs: {} };
   const stack = [root];
 
@@ -141,7 +183,7 @@ function buildTree(tokens) {
         tag: token.tag,
         attrs: token.attrs,
         children: [],
-        styles: resolveStyles(token.tag, token.attrs),
+        styles: resolveStyles(token.tag, token.attrs, cssRules),
         isBlock: BLOCK_ELEMENTS.has(token.tag),
         isInline: INLINE_ELEMENTS.has(token.tag)
       };
@@ -166,9 +208,34 @@ function buildTree(tokens) {
   return root;
 }
 
-function resolveStyles(tag, attrs) {
+function resolveStyles(tag, attrs, cssRules = {}) {
   const styles = { ...(DEFAULT_STYLES[tag] || {}) };
 
+  // Apply CSS rules from <style> block
+  // Match by tag, class, and id
+  if (cssRules) {
+    // Tag selector
+    if (cssRules[tag]) {
+      Object.assign(styles, cssRules[tag]);
+    }
+
+    // Class selectors
+    if (attrs.class) {
+      const classes = attrs.class.split(' ');
+      for (const cls of classes) {
+        if (cssRules[`.${cls}`]) {
+          Object.assign(styles, cssRules[`.${cls}`]);
+        }
+      }
+    }
+
+    // ID selector
+    if (attrs.id && cssRules[`#${attrs.id}`]) {
+      Object.assign(styles, cssRules[`#${attrs.id}`]);
+    }
+  }
+
+  // Inline styles override CSS rules
   if (attrs.style) {
     const inlineStyles = parseInlineStyle(attrs.style);
     Object.assign(styles, inlineStyles);

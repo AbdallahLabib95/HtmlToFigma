@@ -109,9 +109,37 @@
   };
   function parseHTML(htmlString) {
     const cleaned = htmlString.trim();
+    const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/gi;
+    let cssContent = "";
+    let match;
+    while ((match = styleRegex.exec(cleaned)) !== null) {
+      cssContent += match[1] + "\n";
+    }
+    const cssRules = cssContent.trim() ? parseCSSToRules(cssContent) : {};
     const tokens = tokenize(cleaned);
-    const tree = buildTree(tokens);
+    const tree = buildTree(tokens, cssRules);
     return tree;
+  }
+  function parseCSSToRules(cssContent) {
+    const rules = {};
+    const ruleRegex = /([^{]+)\{([^}]*)\}/g;
+    let match;
+    while ((match = ruleRegex.exec(cssContent)) !== null) {
+      const selector = match[1].trim();
+      const declarations = match[2];
+      const styles = {};
+      const declRegex = /([^:;]+):\s*([^;]+);/g;
+      let declMatch;
+      while ((declMatch = declRegex.exec(declarations)) !== null) {
+        const prop = declMatch[1].trim();
+        const value = declMatch[2].trim();
+        styles[camelCase(prop)] = value;
+      }
+      if (Object.keys(styles).length > 0) {
+        rules[selector] = styles;
+      }
+    }
+    return rules;
   }
   function tokenize(html) {
     const tokens = [];
@@ -176,7 +204,7 @@
     }
     return { type: "open", tag, attrs, selfClosing: false };
   }
-  function buildTree(tokens) {
+  function buildTree(tokens, cssRules = {}) {
     const root = { type: "element", tag: "root", children: [], styles: {}, attrs: {} };
     const stack = [root];
     for (const token of tokens) {
@@ -193,7 +221,7 @@
           tag: token.tag,
           attrs: token.attrs,
           children: [],
-          styles: resolveStyles(token.tag, token.attrs),
+          styles: resolveStyles(token.tag, token.attrs, cssRules),
           isBlock: BLOCK_ELEMENTS.has(token.tag),
           isInline: INLINE_ELEMENTS.has(token.tag)
         };
@@ -216,8 +244,24 @@
     }
     return root;
   }
-  function resolveStyles(tag, attrs) {
+  function resolveStyles(tag, attrs, cssRules = {}) {
     const styles = __spreadValues({}, DEFAULT_STYLES[tag] || {});
+    if (cssRules) {
+      if (cssRules[tag]) {
+        Object.assign(styles, cssRules[tag]);
+      }
+      if (attrs.class) {
+        const classes = attrs.class.split(" ");
+        for (const cls of classes) {
+          if (cssRules[`.${cls}`]) {
+            Object.assign(styles, cssRules[`.${cls}`]);
+          }
+        }
+      }
+      if (attrs.id && cssRules[`#${attrs.id}`]) {
+        Object.assign(styles, cssRules[`#${attrs.id}`]);
+      }
+    }
     if (attrs.style) {
       const inlineStyles = parseInlineStyle(attrs.style);
       Object.assign(styles, inlineStyles);
